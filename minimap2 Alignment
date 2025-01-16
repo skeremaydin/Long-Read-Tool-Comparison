@@ -1,0 +1,5 @@
+# Alignment, sorting, and indexing with minimap2 and samtools
+# Align reads with minimap2 and sort with samtools
+minimap2 -ax map-ont -t 32 /your/path/to/reference_genome.fa /your/path/to/reads.fastq.gz | samtools sort -@32 -o /your/path/to/output.bam
+# Index the sorted BAM file
+samtools index /your/path/to/output.bam
