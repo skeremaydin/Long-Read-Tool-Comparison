@@ -1,0 +1,4 @@
+
+# Quality control report with Qualimap
+# Generate a BAM QC report using Qualimap
+qualimap bamqc -bam /your/path/to/output.bam -nt 32 -outdir /your/path/to/qualimap_report/ --java-mem-size=64G
