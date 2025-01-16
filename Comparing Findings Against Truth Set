@@ -1,0 +1,89 @@
+# Set working directory
+setwd("/Path/To/Your/Directory/")  # Adjust the path to the folder where your files are located
+
+# Read truthset into R (VCF file format)
+truthset <- read.table("truthset_file.vcf", sep = "\t", skip = 651, header = FALSE)  # Skipping first 651 lines (metadata)
+
+# Extract INFO column and split it into separate columns
+split_data <- str_split_fixed(truthset$V8, ';', 6)  # Split the INFO column (V8) by ';' into 6 parts
+# Extract specific key-value information from each part of the INFO column
+truthset$SVLEN <- sub(".*=", "", split_data[, 1])  # Extract SVLEN (size of structural variant)
+truthset$SVTYPE <- sub(".*=", "", split_data[, 2])  # Extract SVTYPE (type of structural variant)
+truthset$SUPP_SEQ <- sub(".*=", "", split_data[, 3])  # Extract SUPP_SEQ (supporting sequences)
+truthset$SUPP_VAL <- sub(".*=", "", split_data[, 4])  # Extract SUPP_VAL (supporting value)
+truthset$GENE <- sub(".*=", "", split_data[, 5])  # Extract GENE (gene information)
+truthset$CLUSTER <- sub(".*=", "", split_data[, 6])  # Extract CLUSTER (cluster information)
+
+# Rename columns for better clarity
+colnames(truthset) <- c("CHROM","POS","ID","REF","ALT","QUAL","FILTER","INFO","V9","V10","SVLEN","SVTYPE","SUPP_SEQ","SUPP_VAL","GENE","CLUSTER")
+
+# Read merged somatic variant data to be compared (VCF format)
+common_variants <- read.table("least5_comb.vcf", sep = "\t", header = TRUE)  # Read the common variants file
+
+# Function to process each row of the INFO column into key-value pairs
+process_row <- function(row) {
+  # Split the row by ';' into multiple elements (key-value pairs)
+  split_data <- str_split_fixed(row, ';', n = Inf)
+  
+  # Initialize an empty list to store key-value pairs
+  key_value_list <- list()
+  
+  # Loop through each element in the split data
+  for (i in 1:length(split_data)) {
+    key_value <- str_split_fixed(split_data[i], '=', 2)  # Split by '=' into key and value
+    key <- key_value[1, 1]  # Extract the key
+    value <- key_value[1, 2]  # Extract the value
+    
+    # Add the key-value pair to the list
+    key_value_list[[key]] <- value
+  }
+  
+  # Convert the key-value list into a data frame and return it
+  return(as.data.frame(key_value_list, stringsAsFactors = FALSE))
+}
+
+# Apply the function to each row in the INFO column of common_variants
+result <- do.call(rbind, lapply(common_variants$INFO, process_row))
+
+# Combine the result with the original common_variants data
+common_variants <- cbind(common_variants, result)
+
+# Convert SVLEN to absolute values for both datasets
+common_variants$SVLEN <- abs(as.numeric(common_variants$SVLEN))
+truthset$SVLEN <- abs(as.numeric(truthset$SVLEN))
+
+# Function to compare rows from two data frames based on specific criteria
+compare_sv <- function(df1, df2) {
+  results <- data.frame()  # Initialize an empty data frame to store results
+  
+  # Loop through each row of the first data frame (df1)
+  for (i in 1:nrow(df1)) {
+    row1 <- df1[i, ]  # Extract the current row of df1
+    
+    # Find matching rows in df2 based on the following criteria:
+    matches <- df2 %>%
+      filter(CHROM == row1$CHROM) %>%  # Match the same chromosome
+      filter(abs(POS - row1$POS) < 1000) %>%  # Match positions within 1000 bases
+      filter(SVTYPE == row1$SVTYPE) %>%  # Match the same structural variant type
+      filter(abs(SVLEN - row1$SVLEN) < 100)  # Match SVLEN within a 100 base pair difference
+    
+    # If any matches are found, combine the results (df1 row + matched df2 rows)
+    if (nrow(matches) > 0) {
+      matched_rows <- cbind(row1, matches)  # Combine row1 with the matching rows from df2
+      results <- rbind(results, matched_rows)  # Add to the results data frame
+    }
+  }  
+  
+  # Return the final results data frame
+  return(results)
+}
+
+# Compare the two datasets (common_variants and truthset) using the compare_sv function
+results <- compare_sv(common_variants, truthset)
+
+# Ensure unique column names in the results data frame (in case of overlapping column names)
+colnames(results) <- make.unique(colnames(results))
+
+# Save the results to a file for further analysis
+write.table(results, "least5_comb_truthset_file.txt", sep = "\t", row.names = FALSE)  # Save as tab-delimited file
+
