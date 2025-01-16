@@ -1,0 +1,2 @@
+# FASTQC quality control with 32 threads
+fastqc -r patch-fastqc -t 32 /your/path/to/input_file.fastq.gz -o /your/path/to/output_directory/
