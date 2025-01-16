@@ -1,0 +1,18 @@
+
+#cuteSV
+cuteSV --min_size 50 test.bam reference_genome.fa test.vcf output_directory/
+#DeBreak
+debreak --min_size 50 --bam test.bam -o output_directory/ --ref reference_genome.fa
+#Delly
+delly lr --minrefsep 50 -g reference_genome.fa test.bam > test.vcf
+#Dysgu
+dysgu run --min-size 50 reference_genome.fa dysgu_output_directory/ test.bam > test.vcf -x
+#NanoVar
+nanovar -t 24 --minlen 50 test.bam reference_genome.fa output_directory/
+#Severus
+severus --target-bam tumor.bam --control-bam normal.bam --out-dir output_directory/ -t 16 --vntr-bed reference_genome.trf.bed --min-sv-size 50
+#Unlike the other tools, Severus simplifies the workflow by directly outputting somatic VCF files, eliminating the need for merging tumor and normal results separately.
+#Sniffles
+sniffles --report_BND --input test.bam --vcf output_directory/test.vcf --reference reference_genome.fa
+#SVIM
+svim alignment svim_output_directory/ test.bam reference_genome.fa --min_sv_size 50
