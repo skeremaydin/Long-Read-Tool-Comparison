@@ -1,0 +1,16 @@
+# Set working directory
+setwd("C:/Path/To/Your/Directory/")
+# Read annotated and merged VCF files into R
+merged <- read.vcfR("merged_file.vcf")
+# Remove headers
+merged <- data.frame(getFIX(merged, getINFO = TRUE), merged@gt)
+# Separate format columns
+merged[c('T_GT','T_PSV','T_LN','T_DR','T_ST','T_QV','T_TY','T_ID','T_RAL','T_AAL','T_CO')] <- str_split_fixed(merged[,10], ':', 11)
+merged[c('N_GT','N_PSV','N_LN','N_DR','N_ST','N_QV','N_TY','N_ID','N_RAL','N_AAL','N_CO')] <- str_split_fixed(merged[,11], ':', 11)
+# If T_GT is ./. and T_LN is 0, it is not found in tumor, remove these
+merged_filt <- merged[!(merged$T_GT == "./." & merged$T_LN == 0), ]
+# Compare T_GT and N_GT, if N_GT is ./. and N_LN == 0, take these
+merged_filt <- merged_filt[which(merged_filt$N_GT == "./." & merged_filt$N_LN == 0), ]
+# Write output to files
+write.xlsx(merged_filt, "somatic_data.xlsx", row.names = FALSE)
+write.xlsx(merged_filt, "somatic_data.vcf", row.names = FALSE)
