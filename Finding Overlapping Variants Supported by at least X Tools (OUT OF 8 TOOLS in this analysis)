@@ -1,0 +1,61 @@
+# Set the working directory
+# Replace "/your/path/to/working_directory/" with your actual working directory path
+setwd("/your/path/to/working_directory/")
+
+# Read the VCF file
+# Replace "annotated_allsomatic_COLO829.vcf" with the path to your VCF file
+tumor_merged_all <- read.table("annotated_allsomatic_COLO829.vcf", sep = "\t", skip = 323, header = FALSE)
+
+# Define column names for the VCF file
+# These are the standard VCF columns followed by tool-specific columns
+colnames(tumor_merged_all) <- c("CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER", "INFO", "FORMAT", 
+                                "CuteSV", "Svim", "Sniffles", "Nanovar", "Delly", "Debreak", "Dysgu", "Severus")
+
+# Function to split columns based on the ':' delimiter
+# The function creates multiple new columns with prefixes based on the tool name
+split_columns <- function(df, colname, prefix) {
+  split_data <- str_split_fixed(df[[colname]], ':', 11) # Split the column into 11 parts
+  df[paste0(prefix, '_GT')] <- split_data[,1] # Genotype
+  df[paste0(prefix, '_PSV')] <- split_data[,2] # Phase set value
+  df[paste0(prefix, '_LN')] <- split_data[,3] # Length
+  df[paste0(prefix, '_DR')] <- split_data[,4] # Depth ratio
+  df[paste0(prefix, '_ST')] <- split_data[,5] # Strand
+  df[paste0(prefix, '_QV')] <- split_data[,6] # Quality value
+  df[paste0(prefix, '_TY')] <- split_data[,7] # Type
+  df[paste0(prefix, '_ID')] <- split_data[,8] # Identifier
+  df[paste0(prefix, '_RAL')] <- split_data[,9] # Reference allele
+  df[paste0(prefix, '_AAL')] <- split_data[,10] # Alternate allele
+  df[paste0(prefix, '_CO')] <- split_data[,11] # Confidence
+  return(df)
+}
+
+# Apply the splitting function to each tool column
+# Tools are defined as a list of tool names
+tools <- c("CuteSV", "Svim", "Sniffles", "Nanovar", "Delly", "Debreak", "Dysgu", "Severus")
+for (tool in tools) {
+  tumor_merged_all <- split_columns(tumor_merged_all, tool, tool)
+}
+
+# Filter out entries where PSV is not NaN
+# Create a list of filtered data for each tool
+tool_data <- lapply(tools, function(tool) filter(tumor_merged_all, !!sym(paste0(tool, "_PSV")) != "NaN"))
+
+# Select necessary columns for each tool
+# Keep only key columns for further analysis
+tool_data <- lapply(seq_along(tools), function(i) select(tool_data[[i]], CHROM, POS, ID, REF, ALT, QUAL, FILTER, INFO, FORMAT, tools[i]))
+
+# Create a list for the UpSet plot
+# The list contains the IDs detected by each tool
+x <- setNames(lapply(tool_data, function(df) df$ID), tools)
+
+# Find variants detected by at least three tools
+# Use combinations of three tools and find the intersection of their variant IDs
+common_variants <- Reduce(union, lapply(combn(x, 3, simplify = FALSE), function(pair) Reduce(intersect, pair)))
+
+# Filter the original data to keep only the common variants
+# This filters the main data frame to include only the common variants
+tumor_merged_common <- filter(tumor_merged_all, ID %in% common_variants)
+
+# Write the common variants to a new VCF file
+# Replace "least3common_COLO829.vcf" with your desired output file name
+write.table(tumor_merged_common, "least3common_COLO829.vcf", sep = "\t", row.names = FALSE, quote = FALSE)
