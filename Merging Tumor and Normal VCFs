@@ -1,0 +1,4 @@
+#MERGING TUMOR AND NORMAL
+echo "tumor_sniffles.vcf" > list_vcf
+echo "normal_sniffles.vcf" >> list_vcf
+SURVIVOR merge list_vcf 1000 1 1 0 0 50 sniffles_tumornormal_merged.vcf
