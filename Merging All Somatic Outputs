@@ -1,0 +1,9 @@
+echo "cutesv_somatic.vcf" > list_vcf
+echo "svim_somatic.vcf" >> list_vcf
+echo "sniffles_somatic.vcf" >> list_vcf
+echo "nanovar_somatic.vcf" >> list_vcf
+echo "delly_somatic.vcf" >> list_vcf
+echo "debreak_somatic.vcf" >> list_vcf
+echo "dysgu_somatic.vcf" >> list_vcf
+echo "severus_somatic.vcf" >> list_vcf
+SURVIVOR merge list_vcf 1000 1 1 0 0 50 all_somatic_variants.vcf
